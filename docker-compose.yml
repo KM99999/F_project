@@ -1,0 +1,51 @@
+# Local / VPS stack for the receipt verification system.
+#
+#   docker compose up --build
+#
+# Public entry: http://localhost:8080  (nginx → SPA, and /api → FastAPI)
+# Copy .env.example to .env and adjust secrets before running.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-recibos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-recibos}
+      POSTGRES_DB: ${POSTGRES_DB:-recibos}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-recibos}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    env_file:
+      - .env
+    environment:
+      # Override host: inside the compose network the DB is reachable as "db".
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://recibos:recibos@db:5432/recibos}
+    depends_on:
+      db:
+        condition: service_healthy
+    # Create tables and seed the first user, then start the API.
+    command: >
+      sh -c "python -m scripts.init_db &&
+             python -m scripts.seed_user &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  db_data:
