@@ -63,9 +63,9 @@ Ajustar como mínimo:
   ```bash
   openssl rand -hex 32
   ```
-- `POSTGRES_PASSWORD` → una contraseña fuerte.
-- `DATABASE_URL` → debe usar el mismo usuario/contraseña/host `db`:
-  `postgresql+psycopg2://recibos:LA_CONTRASEÑA@db:5432/recibos`
+- `POSTGRES_PASSWORD` → una contraseña fuerte. La API arma su URL de conexión a
+  partir de los `POSTGRES_*` automáticamente, así que **no hace falta** tocar
+  `DATABASE_URL` (dejarlo comentado para el deploy con docker-compose).
 - `SEED_USER_EMAIL` / `SEED_USER_PASSWORD` → credenciales del primer login que se
   le darán al cliente para la demo.
 - `FRONTEND_ORIGIN` → en producción el SPA y la API comparten origen (mismo

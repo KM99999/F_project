@@ -36,3 +36,17 @@ Thumbs.db
 # TLS certificates / ACME (created on the server, never commit)
 letsencrypt/
 certbot-webroot/
+
+# Receipt samples / uploaded documents — NEVER commit (real financial data, §6.2 NDA).
+# Keep sample/real documents out of the repo entirely.
+samples/
+uploads/
+*.jpeg
+*.jpg
+*.png
+*.pdf
+*.webp
+*.heic
+*.heif
+# (If the frontend ever needs a committed image asset, whitelist it explicitly
+#  with a line like: !frontend/src/assets/logo.png)
