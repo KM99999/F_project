@@ -32,3 +32,7 @@ Thumbs.db
 *.log
 *.tmp
 *.tmp.*
+
+# TLS certificates / ACME (created on the server, never commit)
+letsencrypt/
+certbot-webroot/

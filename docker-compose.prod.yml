@@ -1,0 +1,44 @@
+# Production overlay for a VPS deploy. Use together with the base file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Adds: public ports 80/443, TLS-enabled nginx config, Let's Encrypt volumes,
+# a certbot auto-renewal service, and restart policies.
+# See docs/deploy/vps-fase-0.md for the full runbook (including the first-time
+# certificate issuance, which must happen BEFORE bringing up the TLS config).
+
+services:
+  db:
+    restart: unless-stopped
+
+  api:
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+
+  frontend:
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Override the baked HTTP-only config with the TLS-enabled one.
+      - ./docker/nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      # Shared with certbot (host bind-mounts): certs + ACME challenge webroot.
+      - ./letsencrypt:/etc/letsencrypt:ro
+      - ./certbot-webroot:/var/www/certbot
+
+  # Renews certificates every 12h. The first certificate must be issued
+  # manually (see the runbook) before this is useful.
+  certbot:
+    image: certbot/certbot:latest
+    restart: unless-stopped
+    volumes:
+      - ./letsencrypt:/etc/letsencrypt
+      - ./certbot-webroot:/var/www/certbot
+    entrypoint: >
+      sh -c "trap exit TERM;
+             while :; do
+               certbot renew --webroot -w /var/www/certbot --quiet;
+               sleep 12h & wait $${!};
+             done"

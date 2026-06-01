@@ -32,6 +32,10 @@ docs/               Documentación funcional y plan por fases
 
 ## Cómo levantar el sistema (Fase 0)
 
+> **Despliegue en VPS (producción / demo al cliente):** ver el runbook paso a paso
+> en [docs/deploy/vps-fase-0.md](docs/deploy/vps-fase-0.md) (incluye HTTPS con
+> Let's Encrypt).
+
 ### Opción A — Docker Compose (recomendada)
 
 Requiere Docker.
