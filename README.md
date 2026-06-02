@@ -49,7 +49,7 @@ docker compose up --build
 - La API levanta, crea las tablas (`init_db`) y siembra el usuario inicial
   (`seed_user`) automáticamente.
 - Credenciales del primer login: las definidas en `.env`
-  (`SEED_USER_EMAIL` / `SEED_USER_PASSWORD`).
+  (`SEED_USER_USERNAME` / `SEED_USER_PASSWORD`).
 
 ### Opción B — Desarrollo local (sin Docker)
 

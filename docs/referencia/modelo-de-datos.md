@@ -28,7 +28,8 @@
   `revisor_id` (NULL si automática), `timestamp`
 
 ## Tabla `usuarios`
-- `id`, `email`, `password_hash`, `rol`, `created_at`
+- `id`, `usuario`, `password_hash`, `rol`, `created_at`
+  (el login es por nombre de usuario, no por email)
 
 ## Tabla `firmas_embeddings` (M2)
 - `id`, `recibo_id`, `embedding` (VECTOR), `created_at`

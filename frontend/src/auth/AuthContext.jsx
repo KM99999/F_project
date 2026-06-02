@@ -27,8 +27,8 @@ export function AuthProvider({ children }) {
     restore();
   }, []);
 
-  async function login(email, password) {
-    const { access_token } = await api.login(email, password);
+  async function login(usuario, password) {
+    const { access_token } = await api.login(usuario, password);
     setToken(access_token);
     const me = await api.me();
     setUser(me);

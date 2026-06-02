@@ -1,7 +1,7 @@
 """Seed the initial user so the client can log in for the first demo.
 
-Credentials come from the environment (SEED_USER_EMAIL / SEED_USER_PASSWORD).
-Idempotent: if a user with that email already exists, it is left untouched.
+Credentials come from the environment (SEED_USER_USERNAME / SEED_USER_PASSWORD).
+Idempotent: if a user with that username already exists, it is left untouched.
 
 Run:
     python -m scripts.seed_user
@@ -16,19 +16,19 @@ from app.db.session import SessionLocal
 def main() -> None:
     db = SessionLocal()
     try:
-        existing = db.query(Usuario).filter(Usuario.email == settings.seed_user_email).first()
+        existing = db.query(Usuario).filter(Usuario.usuario == settings.seed_user_username).first()
         if existing:
-            print(f"El usuario '{settings.seed_user_email}' ya existe. Nada que hacer.")
+            print(f"El usuario '{settings.seed_user_username}' ya existe. Nada que hacer.")
             return
 
         user = Usuario(
-            email=settings.seed_user_email,
+            usuario=settings.seed_user_username,
             password_hash=hash_password(settings.seed_user_password),
             rol=settings.seed_user_role,
         )
         db.add(user)
         db.commit()
-        print(f"Usuario inicial creado: {settings.seed_user_email} (rol: {settings.seed_user_role})")
+        print(f"Usuario inicial creado: {settings.seed_user_username} (rol: {settings.seed_user_role})")
     finally:
         db.close()
 

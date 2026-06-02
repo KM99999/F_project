@@ -15,7 +15,7 @@ export default function Layout() {
           <NavLink to="/recibos">Lista</NavLink>
         </nav>
         <div className="app-user">
-          <span>{user?.email}</span>
+          <span>{user?.usuario}</span>
           <button onClick={logout} className="link-button">
             Cerrar sesión
           </button>

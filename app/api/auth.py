@@ -15,12 +15,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     """Validate credentials and return a JWT access token."""
-    user = db.query(Usuario).filter(Usuario.email == payload.email).first()
+    user = db.query(Usuario).filter(Usuario.usuario == payload.usuario).first()
     if user is None or not verify_password(payload.password, user.password_hash):
-        # Same message for both cases: do not reveal whether the email exists.
+        # Same message for both cases: do not reveal whether the user exists.
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email o contraseña incorrectos.",
+            detail="Usuario o contraseña incorrectos.",
         )
 
     token = create_access_token(subject=str(user.id))

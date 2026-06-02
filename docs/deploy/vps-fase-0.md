@@ -66,8 +66,8 @@ Ajustar como mínimo:
 - `POSTGRES_PASSWORD` → una contraseña fuerte. La API arma su URL de conexión a
   partir de los `POSTGRES_*` automáticamente, así que **no hace falta** tocar
   `DATABASE_URL` (dejarlo comentado para el deploy con docker-compose).
-- `SEED_USER_EMAIL` / `SEED_USER_PASSWORD` → credenciales del primer login que se
-  le darán al cliente para la demo.
+- `SEED_USER_USERNAME` / `SEED_USER_PASSWORD` → credenciales del primer login que
+  se le darán al cliente para la demo (el login es por usuario, no por email).
 - `FRONTEND_ORIGIN` → en producción el SPA y la API comparten origen (mismo
   dominio), así que CORS no se usa; podés dejar el valor por defecto.
 
@@ -89,7 +89,7 @@ Probar:
 
 - API viva: `curl http://localhost:8080/api/health` → `{"status":"ok",...}`
 - En el navegador: `http://IP_DEL_VPS:8080` → pantalla de login.
-- Ingresar con `SEED_USER_EMAIL` / `SEED_USER_PASSWORD` → entra al área protegida
+- Ingresar con `SEED_USER_USERNAME` / `SEED_USER_PASSWORD` → entra al área protegida
   con la barra de navegación y las tres pantallas (placeholders).
 
 Si esto funciona, la Fase 0 está verificada funcionalmente. Para producción,

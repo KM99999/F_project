@@ -34,9 +34,11 @@ class Settings(BaseSettings):
     # CORS — origin of the frontend SPA (dev default; override in prod)
     frontend_origin: str = "http://localhost:5173"
 
-    # Seed user (used by scripts/seed_user.py for the first login)
-    seed_user_email: str = "admin@recibos.local"
-    seed_user_password: str = "cambiar-esta-clave"
+    # Seed user (used by scripts/seed_user.py for the first login).
+    # NOTE: this default password is weak — acceptable only for local/testing.
+    # Override SEED_USER_PASSWORD in .env before handling real data (§6.2).
+    seed_user_username: str = "administrator"
+    seed_user_password: str = "123456789"
     seed_user_role: str = "admin"
 
     @property

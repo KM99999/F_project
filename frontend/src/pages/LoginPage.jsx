@@ -9,7 +9,7 @@ export default function LoginPage() {
   const location = useLocation();
   const redirectTo = location.state?.from ?? "/carga";
 
-  const [email, setEmail] = useState("");
+  const [usuario, setUsuario] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -19,7 +19,7 @@ export default function LoginPage() {
     setError("");
     setSubmitting(true);
     try {
-      await login(email, password);
+      await login(usuario, password);
       navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err.message || "No se pudo iniciar sesión.");
@@ -35,11 +35,11 @@ export default function LoginPage() {
         <p className="subtitle">Iniciar sesión</p>
 
         <label>
-          Email
+          Usuario
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            value={usuario}
+            onChange={(e) => setUsuario(e.target.value)}
             autoComplete="username"
             required
           />

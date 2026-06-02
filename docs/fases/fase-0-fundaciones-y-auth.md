@@ -34,7 +34,7 @@ funcional**. Sin esto no hay nada que mostrar ni dónde colgar las pantallas.
 ### Backend — esqueleto y auth
 - [ ] FastAPI corriendo con healthcheck.
 - [ ] SQLAlchemy configurado.
-- [ ] Tabla `usuarios` (`id`, `email`, `password_hash`, `rol`, `created_at`).
+- [ ] Tabla `usuarios` (`id`, `usuario`, `password_hash`, `rol`, `created_at`).
 - [ ] Hash de contraseña (bcrypt/argon2). Nunca texto plano.
 - [ ] Endpoint de login que emite token (JWT o sesión) y middleware que protege
       rutas privadas.
@@ -42,7 +42,7 @@ funcional**. Sin esto no hay nada que mostrar ni dónde colgar las pantallas.
 
 ### Frontend — esqueleto y login
 - [ ] React SPA inicializada.
-- [ ] **Pantalla de login** (email + contraseña).
+- [ ] **Pantalla de login** (usuario + contraseña).
 - [ ] Manejo de token y rutas protegidas (redirige a login si no autenticado).
 - [ ] Layout base / shell de la app con navegación entre las 3 pantallas
       (placeholders por ahora).
