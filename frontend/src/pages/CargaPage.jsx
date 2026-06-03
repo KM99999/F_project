@@ -11,14 +11,21 @@ export default function CargaPage() {
   const [dragOver, setDragOver] = useState(false);
   const [progress, setProgress] = useState(null); // { pct, label }
   const [done, setDone] = useState(null); // uploaded receipt
+  const [error, setError] = useState("");
 
   async function handleFile(file) {
     if (!file) return;
     setDone(null);
+    setError("");
     setProgress({ pct: 0, label: "Preparando…" });
-    const nuevo = await uploadRecibo(file, (step) => setProgress(step));
-    setProgress(null);
-    setDone(nuevo);
+    try {
+      const nuevo = await uploadRecibo(file, (step) => setProgress(step));
+      setDone(nuevo);
+    } catch (err) {
+      setError(err.message || "No se pudo procesar el recibo.");
+    } finally {
+      setProgress(null);
+    }
   }
 
   function onDrop(e) {
@@ -70,6 +77,12 @@ export default function CargaPage() {
             </>
           )}
         </div>
+      )}
+
+      {error && !progress && (
+        <p className="error" style={{ marginTop: "1rem" }}>
+          {error}
+        </p>
       )}
 
       {done && (
