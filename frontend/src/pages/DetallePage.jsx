@@ -101,6 +101,14 @@ export default function DetallePage() {
         </div>
       </div>
 
+      {/* Carnet del cliente (misma verificación) */}
+      <div className="carnet">
+        <h3>Carnet del cliente</h3>
+        <Campo label="Código" value={recibo.carnet_codigo} />
+        <Campo label="Nombre" value={recibo.carnet_nombre} />
+        <Campo label="Fecha de nacimiento" value={recibo.carnet_fecha_nac} />
+      </div>
+
       {/* Casos similares */}
       {recibo.similares.length > 0 && (
         <div className="similares">

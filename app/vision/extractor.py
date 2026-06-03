@@ -10,7 +10,7 @@ import logging
 import re
 
 from app.config import settings
-from app.schemas.recibo import ExtractionResult
+from app.schemas.recibo import CarnetExtraction, ExtractionResult
 from app.vision import prompts
 from app.vision.client import get_client
 
@@ -20,22 +20,28 @@ logger = logging.getLogger("recibos.vision")
 _SYSTEM_BLOCKS = [
     {"type": "text", "text": prompts.EXTRACTION_SYSTEM, "cache_control": {"type": "ephemeral"}}
 ]
+_CARNET_SYSTEM_BLOCKS = [
+    {"type": "text", "text": prompts.CARNET_SYSTEM, "cache_control": {"type": "ephemeral"}}
+]
 
 
-def _parse_json(text: str) -> ExtractionResult:
-    """Extract the first JSON object from the model text and validate it."""
+def _json_dict(text: str) -> dict:
+    """Extract the first JSON object from the model text."""
     cleaned = text.strip()
     # Strip accidental markdown fences if the model added them.
     if cleaned.startswith("```"):
         cleaned = re.sub(r"^```(?:json)?|```$", "", cleaned, flags=re.MULTILINE).strip()
     try:
-        data = json.loads(cleaned)
+        return json.loads(cleaned)
     except json.JSONDecodeError:
         match = re.search(r"\{.*\}", cleaned, re.DOTALL)
         if not match:
             raise ValueError(f"La respuesta de Claude no contiene JSON: {text[:200]}")
-        data = json.loads(match.group(0))
-    return ExtractionResult.model_validate(data)
+        return json.loads(match.group(0))
+
+
+def _parse_json(text: str) -> ExtractionResult:
+    return ExtractionResult.model_validate(_json_dict(text))
 
 
 def _message_text(response) -> str:
@@ -98,3 +104,43 @@ def extract_from_pdf_text(texto: str) -> ExtractionResult:
     result = _parse_json(_message_text(response))
     result.tipo_documento = "pdf_estructurado"
     return result
+
+
+# --- Carnet extraction -----------------------------------------------------
+
+def extract_carnet_from_image(image_bytes: bytes, media_type: str) -> CarnetExtraction:
+    client = get_client()
+    b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
+    response = client.messages.create(
+        model=settings.anthropic_model,
+        max_tokens=512,
+        system=_CARNET_SYSTEM_BLOCKS,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64}},
+                {"type": "text", "text": prompts.CARNET_USER_TEXT},
+            ],
+        }],
+    )
+    logger.info("extract_carnet_from_image usage: %s", response.usage)
+    return CarnetExtraction.model_validate(_json_dict(_message_text(response)))
+
+
+def extract_carnet_from_pdf_document(pdf_bytes: bytes) -> CarnetExtraction:
+    client = get_client()
+    b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
+    response = client.messages.create(
+        model=settings.anthropic_model,
+        max_tokens=512,
+        system=_CARNET_SYSTEM_BLOCKS,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": b64}},
+                {"type": "text", "text": prompts.CARNET_USER_TEXT},
+            ],
+        }],
+    )
+    logger.info("extract_carnet_from_pdf_document usage: %s", response.usage)
+    return CarnetExtraction.model_validate(_json_dict(_message_text(response)))

@@ -34,6 +34,14 @@ class ExtractionResult(BaseModel):
     confianza_por_campo: Optional[ConfianzaPorCampo] = None
 
 
+class CarnetExtraction(BaseModel):
+    """Datos del carnet/identidad. El código es el campo clave."""
+
+    nombre: Optional[str] = None
+    codigo: Optional[str] = None
+    fecha_nacimiento: Optional[str] = None
+
+
 # --- API output ------------------------------------------------------------
 
 class ReciboOut(BaseModel):
@@ -54,6 +62,11 @@ class ReciboOut(BaseModel):
     estado: Estado
     score: int
     confianza_por_campo: Optional[dict] = None
+    # Carnet del cliente (misma verificación)
+    carnet_imagen_url: Optional[str] = None
+    carnet_codigo: Optional[str] = None
+    carnet_nombre: Optional[str] = None
+    carnet_fecha_nac: Optional[str] = None
     created_at: datetime
 
 

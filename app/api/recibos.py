@@ -26,30 +26,40 @@ _MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
 _ALLOWED = {"application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
 
 
+def _validate_upload(content: bytes, filename: str, content_type: str | None, etiqueta: str) -> None:
+    if not content:
+        raise HTTPException(status_code=400, detail=f"El {etiqueta} está vacío.")
+    if len(content) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f"El {etiqueta} supera el tamaño máximo (15 MB).")
+    ok_ext = (filename or "").lower().endswith((".pdf", ".jpg", ".jpeg", ".png", ".webp", ".gif"))
+    if content_type not in _ALLOWED and not ok_ext:
+        raise HTTPException(status_code=415, detail=f"Tipo de archivo no soportado para el {etiqueta}.")
+
+
 @router.post("", response_model=ReciboOut, status_code=status.HTTP_201_CREATED)
-async def crear_recibo(
-    file: UploadFile = File(...),
+async def crear_verificacion(
+    recibo: UploadFile = File(...),
+    carnet: UploadFile = File(...),
     db: Session = Depends(get_db),
     _: Usuario = Depends(get_current_user),
 ) -> Recibo:
-    """Upload a receipt and run the extraction pipeline."""
-    content = await file.read()
-    if not content:
-        raise HTTPException(status_code=400, detail="Archivo vacío.")
-    if len(content) > _MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="El archivo supera el tamaño máximo (15 MB).")
-    if file.content_type not in _ALLOWED and not (file.filename or "").lower().endswith(
-        (".pdf", ".jpg", ".jpeg", ".png", ".webp", ".gif")
-    ):
-        raise HTTPException(status_code=415, detail="Tipo de archivo no soportado.")
+    """Upload a verification: receipt + client carnet (both required) and run the pipeline."""
+    recibo_bytes = await recibo.read()
+    carnet_bytes = await carnet.read()
+    _validate_upload(recibo_bytes, recibo.filename or "", recibo.content_type, "recibo")
+    _validate_upload(carnet_bytes, carnet.filename or "", carnet.content_type, "carnet")
 
     try:
-        return pipeline.process_receipt(db, content, file.filename or "recibo", file.content_type or "")
+        return pipeline.process_verificacion(
+            db,
+            recibo_bytes, recibo.filename or "recibo", recibo.content_type or "",
+            carnet_bytes, carnet.filename or "carnet", carnet.content_type or "",
+        )
     except RuntimeError as exc:  # e.g. missing API key
         raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:  # noqa: BLE001
-        logger.exception("Fallo al procesar el recibo")
-        raise HTTPException(status_code=502, detail=f"No se pudo procesar el recibo: {exc}")
+        logger.exception("Fallo al procesar la verificación")
+        raise HTTPException(status_code=502, detail=f"No se pudo procesar la verificación: {exc}")
 
 
 @router.get("", response_model=ReciboListOut)

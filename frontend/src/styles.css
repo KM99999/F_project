@@ -345,6 +345,35 @@ button:disabled {
   color: #991b1b;
 }
 
+/* --- Carga: dos documentos --- */
+.doc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 720px) {
+  .doc-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.dropzone--filled {
+  border-style: solid;
+  border-color: var(--green);
+  background: #f0fdf4;
+}
+
+/* --- Carnet --- */
+.carnet {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.carnet h3 {
+  margin-top: 0;
+}
+
 /* --- Casos similares --- */
 .similares,
 .revision {

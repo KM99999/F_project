@@ -50,3 +50,27 @@ PDF_TEXT_USER_TEMPLATE = (
     'el JSON del esquema. Marcá "tipo_documento" como "foto_impreso".\n\n'
     "--- TEXTO DEL RECIBO ---\n{texto}\n--- FIN ---"
 )
+
+# --- Carnet / documento de identidad del cliente -------------------------
+CARNET_SYSTEM = """\
+Eres un extractor de datos de carnets/documentos de identidad de clientes.
+Recibís la imagen (o el PDF) de un carnet y devolvés EXCLUSIVAMENTE un objeto
+JSON con este esquema fijo:
+
+{
+  "nombre": string | null,             // nombre completo del titular
+  "codigo": string | null,             // código / número de socio o documento
+  "fecha_nacimiento": string | null    // tal como aparece (ej. "15/9/2023")
+}
+
+Reglas:
+- Devolvé SIEMPRE JSON válido y NADA más (sin texto, sin markdown, sin ```).
+- Usá null para cualquier campo que no encuentres. NUNCA inventes datos.
+- "codigo" es el campo MÁS IMPORTANTE: es el identificador del cliente
+  (suele estar etiquetado como "Código", "Code", "N°", "Socio" o similar).
+
+Ejemplo de salida válida:
+{"nombre":"FRANK ALONSO LORA ARIAS","codigo":"415748","fecha_nacimiento":"15/9/2023"}
+"""
+
+CARNET_USER_TEXT = "Extraé los datos de este carnet y devolvé solo el JSON del esquema."

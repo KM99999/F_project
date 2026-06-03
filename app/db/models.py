@@ -57,6 +57,13 @@ class Recibo(Base):
     # Per-field confidence for handwritten receipts (alta/media/baja).
     confianza_por_campo: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
+    # Carnet / documento de identidad del cliente (parte de la misma verificación).
+    # El código es el identificador clave del cliente.
+    carnet_imagen_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    carnet_codigo: Mapped[str | None] = mapped_column(String(100), index=True, nullable=True)
+    carnet_nombre: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    carnet_fecha_nac: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -33,12 +33,32 @@ def _extract(file_bytes: bytes, filename: str, content_type: str) -> ExtractionR
     return extractor.extract_from_image(file_bytes, media_type)
 
 
-def process_receipt(
-    db: Session, file_bytes: bytes, filename: str, content_type: str
+def _extract_carnet(file_bytes: bytes, filename: str, content_type: str):
+    """Extract the client carnet (id/membership card)."""
+    if classifier.is_pdf(content_type, filename):
+        return extractor.extract_carnet_from_pdf_document(file_bytes)
+    media_type = classifier.resolve_image_media_type(content_type, filename)
+    return extractor.extract_carnet_from_image(file_bytes, media_type)
+
+
+def process_verificacion(
+    db: Session,
+    recibo_bytes: bytes,
+    recibo_name: str,
+    recibo_ct: str,
+    carnet_bytes: bytes,
+    carnet_name: str,
+    carnet_ct: str,
 ) -> Recibo:
-    """Run the full pipeline and persist the resulting receipt."""
-    imagen_url = storage.save_upload(file_bytes, filename)
-    extracted = _extract(file_bytes, filename, content_type)
+    """Process a verification: receipt + client carnet -> one persisted record."""
+    imagen_url = storage.save_upload(recibo_bytes, recibo_name)
+    extracted = _extract(recibo_bytes, recibo_name, recibo_ct)
+
+    # Carnet (obligatorio): estructurado y claro -> extracción directa.
+    carnet_url = storage.save_upload(carnet_bytes, carnet_name)
+    carnet = _extract_carnet(carnet_bytes, carnet_name, carnet_ct)
+
+    file_bytes, filename, content_type = recibo_bytes, recibo_name, recibo_ct
 
     confianza = (
         extracted.confianza_por_campo.model_dump(exclude_none=True)
@@ -59,6 +79,10 @@ def process_receipt(
         concepto=normalize.normalize_text(extracted.concepto),
         forma_pago=extracted.forma_pago,
         confianza_por_campo=confianza,
+        carnet_imagen_url=carnet_url,
+        carnet_codigo=(carnet.codigo or "").strip() or None,
+        carnet_nombre=carnet.nombre,
+        carnet_fecha_nac=carnet.fecha_nacimiento,
     )
 
     # --- Detección de duplicados (Fase 3) ---

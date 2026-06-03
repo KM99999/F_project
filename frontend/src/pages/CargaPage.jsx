@@ -1,64 +1,112 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { uploadRecibo } from "../api/recibos.js";
+import { uploadVerificacion } from "../api/recibos.js";
 
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.heic";
 
+// One drop/select zone for a single document.
+function DocZone({ label, hint, file, onPick, disabled }) {
+  const inputRef = useRef(null);
+  const [over, setOver] = useState(false);
+
+  function pick(f) {
+    if (f) onPick(f);
+  }
+
+  return (
+    <div
+      className={`dropzone ${over ? "dropzone--over" : ""} ${file ? "dropzone--filled" : ""}`}
+      onClick={() => !disabled && inputRef.current?.click()}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setOver(false);
+        if (!disabled) pick(e.dataTransfer.files?.[0]);
+      }}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACCEPT}
+        capture="environment"
+        hidden
+        onChange={(e) => pick(e.target.files?.[0])}
+      />
+      <strong>{label}</strong>
+      {file ? (
+        <p className="ok small">✓ {file.name}</p>
+      ) : (
+        <p className="muted small">{hint}</p>
+      )}
+    </div>
+  );
+}
+
 export default function CargaPage() {
   const navigate = useNavigate();
-  const inputRef = useRef(null);
-  const [dragOver, setDragOver] = useState(false);
+  const [recibo, setRecibo] = useState(null);
+  const [carnet, setCarnet] = useState(null);
   const [progress, setProgress] = useState(null); // { pct, label }
-  const [done, setDone] = useState(null); // uploaded receipt
+  const [done, setDone] = useState(null);
   const [error, setError] = useState("");
 
-  async function handleFile(file) {
-    if (!file) return;
-    setDone(null);
+  const busy = progress !== null;
+
+  async function procesar() {
+    if (!recibo || !carnet) return;
     setError("");
+    setDone(null);
     setProgress({ pct: 0, label: "Preparando…" });
     try {
-      const nuevo = await uploadRecibo(file, (step) => setProgress(step));
+      const nuevo = await uploadVerificacion(recibo, carnet, (step) => setProgress(step));
       setDone(nuevo);
     } catch (err) {
-      setError(err.message || "No se pudo procesar el recibo.");
+      setError(err.message || "No se pudo procesar la verificación.");
     } finally {
       setProgress(null);
     }
   }
 
-  function onDrop(e) {
-    e.preventDefault();
-    setDragOver(false);
-    handleFile(e.dataTransfer.files?.[0]);
+  function reset() {
+    setRecibo(null);
+    setCarnet(null);
+    setDone(null);
+    setError("");
   }
-
-  const busy = progress !== null;
 
   return (
     <section className="page">
-      <h2>Cargar recibo</h2>
+      <h2>Nueva verificación</h2>
 
       {!done && (
-        <div
-          className={`dropzone ${dragOver ? "dropzone--over" : ""}`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={onDrop}
-          onClick={() => !busy && inputRef.current?.click()}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept={ACCEPT}
-            capture="environment"
-            hidden
-            onChange={(e) => handleFile(e.target.files?.[0])}
-          />
+        <>
+          <p className="muted">
+            Subí los <strong>dos documentos</strong> de la solicitud: el recibo y el
+            carnet/identidad del cliente. Se procesan en un único resultado.
+          </p>
+
+          <div className="doc-grid">
+            <DocZone
+              label="1) Recibo"
+              hint="PDF o foto del recibo"
+              file={recibo}
+              onPick={setRecibo}
+              disabled={busy}
+            />
+            <DocZone
+              label="2) Carnet del cliente"
+              hint="Foto o PDF del carnet (con el código)"
+              file={carnet}
+              onPick={setCarnet}
+              disabled={busy}
+            />
+          </div>
+
           {busy ? (
             <div className="progress-box">
               <p>{progress.label}</p>
@@ -68,30 +116,22 @@ export default function CargaPage() {
               <p className="muted small">{progress.pct}%</p>
             </div>
           ) : (
-            <>
-              <span className="dropzone-icon">⬆️</span>
-              <p>
-                Arrastrá un recibo aquí, o <strong>hacé clic para elegir</strong>
-              </p>
-              <p className="muted small">PDF o foto (también desde la cámara del celular)</p>
-            </>
+            <button onClick={procesar} disabled={!recibo || !carnet} style={{ marginTop: "1rem" }}>
+              Procesar verificación
+            </button>
           )}
-        </div>
-      )}
 
-      {error && !progress && (
-        <p className="error" style={{ marginTop: "1rem" }}>
-          {error}
-        </p>
+          {error && !busy && <p className="error" style={{ marginTop: "1rem" }}>{error}</p>}
+        </>
       )}
 
       {done && (
         <div className="upload-done">
-          <p className="ok">✓ Recibo procesado: datos extraídos.</p>
+          <p className="ok">✓ Verificación procesada: recibo y carnet.</p>
           <div className="upload-actions">
             <button onClick={() => navigate(`/recibos/${done.id}`)}>Ver detalle</button>
-            <button className="btn-ghost" onClick={() => setDone(null)}>
-              Cargar otro
+            <button className="btn-ghost" onClick={reset}>
+              Nueva verificación
             </button>
             <button className="btn-ghost" onClick={() => navigate("/recibos")}>
               Ir a la lista
@@ -101,8 +141,8 @@ export default function CargaPage() {
       )}
 
       <p className="muted small note">
-        El sistema clasifica el documento y extrae los 6 campos con IA. La
-        detección de duplicados (estado y casos similares) se activa en la Fase 3.
+        El sistema clasifica el recibo y extrae sus 6 campos, y del carnet toma el
+        nombre y el código del cliente. La detección de duplicados corre sobre el recibo.
       </p>
     </section>
   );

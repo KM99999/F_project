@@ -41,11 +41,13 @@ export async function fetchRecibo(id) {
   return res.json();
 }
 
-// POST /recibos — multipart upload + pipeline. Uses XHR for real upload progress.
-export function uploadRecibo(file, onProgress) {
+// POST /recibos — verificación: recibo + carnet (ambos obligatorios).
+// Uses XHR for real upload progress.
+export function uploadVerificacion(reciboFile, carnetFile, onProgress) {
   return new Promise((resolve, reject) => {
     const form = new FormData();
-    form.append("file", file);
+    form.append("recibo", reciboFile);
+    form.append("carnet", carnetFile);
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_URL}/recibos`);
