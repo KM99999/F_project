@@ -1,0 +1,108 @@
+"""Receipt endpoints (§5.5): upload + pipeline, paginated list, detail.
+
+All endpoints require authentication. Duplicate-detection fields (estado/score/
+similares) exist but are only meaningfully populated in Fase 3.
+"""
+
+import logging
+import math
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_current_user
+from app.core import pipeline
+from app.db.models import Recibo, Usuario
+from app.db.session import get_db
+from app.schemas.recibo import ReciboDetalle, ReciboListOut, ReciboOut
+
+logger = logging.getLogger("recibos.api")
+
+router = APIRouter(prefix="/recibos", tags=["recibos"])
+
+_MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
+_ALLOWED = {"application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
+
+
+@router.post("", response_model=ReciboOut, status_code=status.HTTP_201_CREATED)
+async def crear_recibo(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+) -> Recibo:
+    """Upload a receipt and run the extraction pipeline."""
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Archivo vacío.")
+    if len(content) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="El archivo supera el tamaño máximo (15 MB).")
+    if file.content_type not in _ALLOWED and not (file.filename or "").lower().endswith(
+        (".pdf", ".jpg", ".jpeg", ".png", ".webp", ".gif")
+    ):
+        raise HTTPException(status_code=415, detail="Tipo de archivo no soportado.")
+
+    try:
+        return pipeline.process_receipt(db, content, file.filename or "recibo", file.content_type or "")
+    except RuntimeError as exc:  # e.g. missing API key
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Fallo al procesar el recibo")
+        raise HTTPException(status_code=502, detail=f"No se pudo procesar el recibo: {exc}")
+
+
+@router.get("", response_model=ReciboListOut)
+def listar_recibos(
+    estado: str | None = Query(default=None),
+    desde: str | None = Query(default=None),
+    hasta: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=10, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+) -> ReciboListOut:
+    """Paginated list with filters by estado and date range (§5.6)."""
+    conditions = []
+    if estado:
+        conditions.append(Recibo.estado == estado)
+    if desde:
+        conditions.append(Recibo.fecha >= desde)
+    if hasta:
+        conditions.append(Recibo.fecha <= hasta)
+
+    base = select(Recibo)
+    for cond in conditions:
+        base = base.where(cond)
+
+    total = len(db.execute(base).scalars().all())
+    rows = (
+        db.execute(
+            base.order_by(Recibo.created_at.desc())
+            .offset((page - 1) * pageSize)
+            .limit(pageSize)
+        )
+        .scalars()
+        .all()
+    )
+    return ReciboListOut(
+        items=[ReciboOut.model_validate(r) for r in rows],
+        total=total,
+        page=page,
+        pageSize=pageSize,
+        totalPages=max(1, math.ceil(total / pageSize)),
+    )
+
+
+@router.get("/{recibo_id}", response_model=ReciboDetalle)
+def obtener_recibo(
+    recibo_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+) -> ReciboDetalle:
+    """Receipt detail. `similares` is populated in Fase 3."""
+    recibo = db.get(Recibo, recibo_id)
+    if recibo is None:
+        raise HTTPException(status_code=404, detail="Recibo no encontrado.")
+    detalle = ReciboDetalle.model_validate(recibo)
+    detalle.similares = []
+    return detalle

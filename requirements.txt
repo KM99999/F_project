@@ -11,3 +11,9 @@ passlib[bcrypt]==1.7.4
 # bcrypt (>=4.1) removed — causing a noisy "error reading bcrypt version" log.
 bcrypt==4.0.1
 python-multipart==0.0.20
+
+# AI / document processing (Fase 2 — pipeline de extracción).
+# Floors (not exact pins) so the first build resolves a current working version.
+anthropic>=0.40
+pdfplumber>=0.11
+pillow>=10.0

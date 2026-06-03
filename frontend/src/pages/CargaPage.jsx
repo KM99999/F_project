@@ -74,7 +74,7 @@ export default function CargaPage() {
 
       {done && (
         <div className="upload-done">
-          <p className="ok">✓ Recibo procesado (extracción simulada — Fase 1).</p>
+          <p className="ok">✓ Recibo procesado: datos extraídos.</p>
           <div className="upload-actions">
             <button onClick={() => navigate(`/recibos/${done.id}`)}>Ver detalle</button>
             <button className="btn-ghost" onClick={() => setDone(null)}>
@@ -88,9 +88,8 @@ export default function CargaPage() {
       )}
 
       <p className="muted small note">
-        Nota: en la Fase 1 la extracción es simulada. El pipeline real de IA
-        (clasificación + extracción + detección de duplicados) se conecta en las
-        Fases 2 y 3.
+        El sistema clasifica el documento y extrae los 6 campos con IA. La
+        detección de duplicados (estado y casos similares) se activa en la Fase 3.
       </p>
     </section>
   );

@@ -1,92 +1,95 @@
-// Data-service layer for receipts.
-//
-// Fase 1: serves MOCK data from an in-memory copy so the UI is fully navigable.
-// Fase 2/3: replace the bodies of these functions with real calls via api/client.js
-// (e.g. request("/recibos"), request(`/recibos/${id}`), ...) — the signatures and
-// returned shapes are designed to stay the same so the pages don't change.
+// Data-service layer for receipts — now backed by the real API (Fase 2).
+// Function signatures and returned shapes match what the screens already consume.
 
-import { RECIBOS } from "../mock/recibos.js";
+import { API_URL, getToken } from "./client.js";
 
-// Mutable session copy so uploads/reviews are reflected while navigating.
-let store = RECIBOS.map((r) => ({ ...r }));
-let nextId = Math.max(...store.map((r) => r.id)) + 1;
+function authHeaders(extra = {}) {
+  const headers = { ...extra };
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
 
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function asError(res) {
+  let detail = "Error de servidor.";
+  try {
+    detail = (await res.json()).detail ?? detail;
+  } catch {
+    /* no JSON body */
+  }
+  const err = new Error(detail);
+  err.status = res.status;
+  return err;
+}
 
-// GET /recibos — paginated list with filters (estado, date range).
+// GET /recibos — paginated list with filters.
 export async function fetchRecibos({ estado = "", desde = "", hasta = "", page = 1, pageSize = 10 } = {}) {
-  await delay(250);
-  let items = [...store].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (estado) params.set("estado", estado);
+  if (desde) params.set("desde", desde);
+  if (hasta) params.set("hasta", hasta);
 
-  if (estado) items = items.filter((r) => r.estado === estado);
-  if (desde) items = items.filter((r) => r.fecha >= desde);
-  if (hasta) items = items.filter((r) => r.fecha <= hasta);
-
-  const total = items.length;
-  const start = (page - 1) * pageSize;
-  const pageItems = items.slice(start, start + pageSize);
-  return { items: pageItems, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
+  const res = await fetch(`${API_URL}/recibos?${params.toString()}`, { headers: authHeaders() });
+  if (!res.ok) throw await asError(res);
+  return res.json();
 }
 
-// GET /recibos/{id} — detail, with resolved similar cases.
+// GET /recibos/{id}
 export async function fetchRecibo(id) {
-  await delay(200);
-  const recibo = store.find((r) => r.id === Number(id));
-  if (!recibo) {
-    const err = new Error("Recibo no encontrado.");
-    err.status = 404;
-    throw err;
-  }
-  const similares = (recibo.similares ?? []).map((s) => {
-    const ref = store.find((r) => r.id === s.id);
-    return { ...s, fecha: ref?.fecha, monto: ref?.monto, moneda: ref?.moneda, emisor_original: ref?.emisor_original };
+  const res = await fetch(`${API_URL}/recibos/${id}`, { headers: authHeaders() });
+  if (!res.ok) throw await asError(res);
+  return res.json();
+}
+
+// POST /recibos — multipart upload + pipeline. Uses XHR for real upload progress.
+export function uploadRecibo(file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    form.append("file", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_URL}/recibos`);
+    const token = getToken();
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        // Upload is ~half the perceived work; extraction (server-side) is the rest.
+        const pct = Math.round((e.loaded / e.total) * 50);
+        onProgress?.({ pct, label: "Subiendo archivo…" });
+      }
+    };
+    // Once the body is sent, the server is classifying + extracting.
+    xhr.upload.onload = () => onProgress?.({ pct: 70, label: "Extrayendo datos…" });
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress?.({ pct: 100, label: "Listo" });
+        resolve(JSON.parse(xhr.responseText));
+      } else {
+        let detail = "No se pudo procesar el recibo.";
+        try {
+          detail = JSON.parse(xhr.responseText).detail ?? detail;
+        } catch {
+          /* ignore */
+        }
+        const err = new Error(detail);
+        err.status = xhr.status;
+        reject(err);
+      }
+    };
+    xhr.onerror = () => reject(new Error("Error de red al subir el recibo."));
+    xhr.send(form);
   });
-  return { ...recibo, similares };
 }
 
-// POST /recibos — simulate the upload + pipeline with progress callbacks.
-// In Fase 2 this becomes a real multipart upload that runs the AI pipeline.
-export async function uploadRecibo(file, onProgress) {
-  const steps = [
-    { pct: 25, label: "Subiendo archivo…" },
-    { pct: 55, label: "Clasificando documento…" },
-    { pct: 80, label: "Extrayendo campos…" },
-    { pct: 100, label: "Listo" },
-  ];
-  for (const step of steps) {
-    await delay(500);
-    onProgress?.(step);
-  }
-  // Mock result: a new "unico" receipt so it appears in the list.
-  const nuevo = {
-    id: nextId++,
-    tipo_documento: "foto_impreso",
-    imagen_url: null,
-    fecha: new Date().toISOString().slice(0, 10),
-    monto: "0.00",
-    moneda: "ARS",
-    cliente: "(pendiente)",
-    cliente_original: "(pendiente de extracción)",
-    emisor: "(pendiente)",
-    emisor_original: file?.name ?? "(archivo subido)",
-    concepto: "Extracción simulada (Fase 1)",
-    forma_pago: "—",
-    estado: "unico",
-    score: 0,
-    confianza_por_campo: null,
-    created_at: new Date().toISOString(),
-    similares: [],
-  };
-  store = [nuevo, ...store];
-  return nuevo;
-}
-
-// POST /recibos/{id}/revision — approve/reject a low-confidence case.
+// POST /recibos/{id}/revision — approve/reject (implemented in Fase 3).
 export async function reviewRecibo(id, decision) {
-  await delay(250);
-  const recibo = store.find((r) => r.id === Number(id));
-  if (!recibo) throw new Error("Recibo no encontrado.");
-  // aprobar => confirm duplicate; rechazar => mark as unique.
-  recibo.estado = decision === "aprobar" ? "duplicado_confirmado" : "unico";
-  return { ...recibo };
+  const res = await fetch(`${API_URL}/recibos/${id}/revision`, {
+    method: "POST",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ decision }),
+  });
+  if (!res.ok) throw await asError(res);
+  return res.json();
 }

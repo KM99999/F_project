@@ -34,6 +34,19 @@ class Settings(BaseSettings):
     # CORS — origin of the frontend SPA (dev default; override in prod)
     frontend_origin: str = "http://localhost:5173"
 
+    # AI / Anthropic (Fase 2). The project doc pinned "claude-3-5-sonnet", which
+    # is now retired; "claude-sonnet-4-6" is its current Sonnet-tier replacement.
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-sonnet-4-6"
+    anthropic_timeout_seconds: float = 60.0  # §6.3: 60s timeout per receipt
+    anthropic_max_retries: int = 5  # §6.3: retries with exponential backoff
+
+    # Local storage for uploaded receipt images (Fase 2). Replaced by an
+    # S3-compatible bucket later (§3 infraestructura).
+    upload_dir: str = "/data/uploads"
+    # Public base path the API serves uploads under (see main.py static mount).
+    upload_url_prefix: str = "/media"
+
     # Seed user (used by scripts/seed_user.py for the first login).
     # NOTE: this default password is weak — acceptable only for local/testing.
     # Override SEED_USER_PASSWORD in .env before handling real data (§6.2).
