@@ -13,9 +13,10 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core import pipeline
+from app.detection import engine
 from app.db.models import Recibo, Usuario
 from app.db.session import get_db
-from app.schemas.recibo import ReciboDetalle, ReciboListOut, ReciboOut
+from app.schemas.recibo import ReciboDetalle, ReciboListOut, ReciboOut, RevisionRequest
 
 logger = logging.getLogger("recibos.api")
 
@@ -104,5 +105,22 @@ def obtener_recibo(
     if recibo is None:
         raise HTTPException(status_code=404, detail="Recibo no encontrado.")
     detalle = ReciboDetalle.model_validate(recibo)
-    detalle.similares = []
+    detalle.similares = engine.find_similares(db, recibo)
     return detalle
+
+
+@router.post("/{recibo_id}/revision", response_model=ReciboOut)
+def revisar_recibo(
+    recibo_id: int,
+    payload: RevisionRequest,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+) -> Recibo:
+    """Revisión humana (§5.6): aprobar => duplicado_confirmado; rechazar => unico."""
+    recibo = db.get(Recibo, recibo_id)
+    if recibo is None:
+        raise HTTPException(status_code=404, detail="Recibo no encontrado.")
+    recibo.estado = "duplicado_confirmado" if payload.decision == "aprobar" else "unico"
+    db.commit()
+    db.refresh(recibo)
+    return recibo

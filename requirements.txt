@@ -17,3 +17,5 @@ python-multipart==0.0.20
 anthropic>=0.40
 pdfplumber>=0.11
 pillow>=10.0
+# Detección visual (Fase 3 — hash perceptual / pHash)
+imagehash>=4.3

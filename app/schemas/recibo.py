@@ -68,3 +68,8 @@ class ReciboListOut(BaseModel):
     page: int
     pageSize: int
     totalPages: int
+
+
+class RevisionRequest(BaseModel):
+    # "aprobar" => confirmar duplicado; "rechazar" => marcar como único.
+    decision: Literal["aprobar", "rechazar"]

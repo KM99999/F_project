@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.core import classifier, normalize, storage
 from app.db.models import Recibo
+from app.detection import engine, exact
+from app.detection import phash as phash_mod
 from app.schemas.recibo import ExtractionResult
 from app.vision import extractor
 
@@ -56,12 +58,27 @@ def process_receipt(
         emisor_original=extracted.emisor,
         concepto=normalize.normalize_text(extracted.concepto),
         forma_pago=extracted.forma_pago,
-        estado="unico",   # detection runs in Fase 3
-        score=0,
         confianza_por_campo=confianza,
     )
+
+    # --- Detección de duplicados (Fase 3) ---
+    # pHash solo para imágenes; los PDFs estructurados se apoyan en el match exacto.
+    phash = None
+    if not classifier.is_pdf(content_type, filename):
+        phash = phash_mod.compute_phash(file_bytes)
+    recibo.phash = phash
+    clave = exact.build_clave(recibo.emisor, recibo.fecha, recibo.monto, recibo.cliente)
+    recibo.clave_compuesta_hash = exact.clave_hash(clave)
+
+    estado, score = engine.evaluate(db, recibo, phash)
+    recibo.estado = estado
+    recibo.score = score
+
     db.add(recibo)
     db.commit()
     db.refresh(recibo)
-    logger.info("Recibo %s procesado (tipo=%s)", recibo.id, recibo.tipo_documento)
+    logger.info(
+        "Recibo %s procesado (tipo=%s, estado=%s, score=%s)",
+        recibo.id, recibo.tipo_documento, recibo.estado, recibo.score,
+    )
     return recibo

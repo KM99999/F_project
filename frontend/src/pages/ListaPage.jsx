@@ -12,9 +12,11 @@ const ESTADOS = [
 ];
 
 function formatMonto(monto, moneda) {
+  if (monto == null) return "—";
   const n = Number(monto);
-  if (Number.isNaN(n)) return monto;
-  return `${moneda} ${n.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+  if (Number.isNaN(n)) return String(monto);
+  const formatted = n.toLocaleString("es-AR", { minimumFractionDigits: 2 });
+  return moneda ? `${moneda} ${formatted}` : formatted;
 }
 
 export default function ListaPage() {
