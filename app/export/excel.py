@@ -23,8 +23,8 @@ _ESTADO_LABEL = {
 }
 
 _HEADERS = [
-    "ID", "Fecha", "Cliente", "Emisor", "Monto", "Moneda", "Concepto",
-    "Estado", "Score", "Código carnet", "Nombre carnet", "Imagen",
+    "ID", "Fecha servicio", "Fecha procesamiento", "Cliente", "Emisor", "Monto",
+    "Moneda", "Concepto", "Estado", "Score", "Código carnet", "Nombre carnet", "Imagen",
 ]
 
 _LINK_FONT = Font(color="0563C1", underline="single")
@@ -55,31 +55,40 @@ def build_workbook(recibos: Iterable[Recibo], media_base_url: str) -> bytes:
         idx = ws.max_row + 1
         ws.cell(row=idx, column=1, value=r.id)
 
+        # Fecha del servicio (la que figura en el recibo)
         fecha_val = _as_date(r.fecha)
         c_fecha = ws.cell(row=idx, column=2, value=fecha_val)
         if isinstance(fecha_val, date):
-            c_fecha.number_format = "yyyy-mm-dd"
+            c_fecha.number_format = "dd/mm/yyyy"
 
-        ws.cell(row=idx, column=3, value=r.cliente_original)
-        ws.cell(row=idx, column=4, value=r.emisor_original)
+        # Fecha de procesamiento en el sistema (created_at; sin tz para Excel)
+        proc = r.created_at
+        if proc is not None and getattr(proc, "tzinfo", None) is not None:
+            proc = proc.replace(tzinfo=None)
+        c_proc = ws.cell(row=idx, column=3, value=proc)
+        if proc is not None:
+            c_proc.number_format = "dd/mm/yyyy hh:mm"
 
-        c_monto = ws.cell(row=idx, column=5, value=float(r.monto) if r.monto is not None else None)
+        ws.cell(row=idx, column=4, value=r.cliente_original)
+        ws.cell(row=idx, column=5, value=r.emisor_original)
+
+        c_monto = ws.cell(row=idx, column=6, value=float(r.monto) if r.monto is not None else None)
         c_monto.number_format = "#,##0.00"
 
-        ws.cell(row=idx, column=6, value=r.moneda)
-        ws.cell(row=idx, column=7, value=r.concepto)
-        ws.cell(row=idx, column=8, value=_ESTADO_LABEL.get(r.estado, r.estado))
-        ws.cell(row=idx, column=9, value=r.score)
-        ws.cell(row=idx, column=10, value=r.carnet_codigo)
-        ws.cell(row=idx, column=11, value=r.carnet_nombre)
+        ws.cell(row=idx, column=7, value=r.moneda)
+        ws.cell(row=idx, column=8, value=r.concepto)
+        ws.cell(row=idx, column=9, value=_ESTADO_LABEL.get(r.estado, r.estado))
+        ws.cell(row=idx, column=10, value=r.score)
+        ws.cell(row=idx, column=11, value=r.carnet_codigo)
+        ws.cell(row=idx, column=12, value=r.carnet_nombre)
 
-        c_link = ws.cell(row=idx, column=12, value="Ver imagen" if r.imagen_url else None)
+        c_link = ws.cell(row=idx, column=13, value="Ver imagen" if r.imagen_url else None)
         if r.imagen_url:
             url = f"{base}{r.imagen_url}" if r.imagen_url.startswith("/") else r.imagen_url
             c_link.hyperlink = url
             c_link.font = _LINK_FONT
 
-    widths = [6, 12, 24, 24, 12, 8, 28, 18, 7, 14, 24, 12]
+    widths = [6, 14, 18, 24, 24, 12, 8, 28, 18, 7, 14, 24, 12]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = w
 

@@ -29,6 +29,15 @@ function parseToISO(text) {
   return `${m[3]}-${mo}-${d}`;
 }
 
+// created_at is an ISO datetime; show only the date as DD/MM/AAAA (local).
+function formatFechaProceso(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
 function formatMonto(monto, moneda) {
   if (monto == null) return "—";
   const n = Number(monto);
@@ -149,7 +158,8 @@ export default function ListaPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Fecha</th>
+              <th>Fecha servicio</th>
+              <th>Fecha proceso</th>
               <th>Cliente</th>
               <th>Emisor</th>
               <th className="right">Monto</th>
@@ -162,6 +172,7 @@ export default function ListaPage() {
             {data.items.map((r) => (
               <tr key={r.id} onClick={() => navigate(`/recibos/${r.id}`)} className="row-link">
                 <td>{formatFecha(r.fecha)}</td>
+                <td>{formatFechaProceso(r.created_at)}</td>
                 <td>{r.cliente_original}</td>
                 <td>{r.emisor_original}</td>
                 <td className="right">{formatMonto(r.monto, r.moneda)}</td>

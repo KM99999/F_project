@@ -17,6 +17,15 @@ function formatFecha(iso) {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
 
+// Processing date/time (created_at) as DD/MM/AAAA HH:MM (local).
+function formatFechaHora(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 function formatMonto(monto, moneda) {
   if (monto == null) return "—";
   const n = Number(monto);
@@ -84,6 +93,7 @@ export default function DetallePage() {
       </div>
 
       <h2>Recibo #{recibo.id}</h2>
+      <p className="muted small">Procesado en el sistema: {formatFechaHora(recibo.created_at)}</p>
 
       <div className="detalle-grid">
         {/* Imagen original (placeholder en Fase 1) */}
@@ -106,7 +116,8 @@ export default function DetallePage() {
         {/* Datos extraídos */}
         <div className="detalle-datos">
           <h3>Datos extraídos</h3>
-          <Campo label="Fecha" value={formatFecha(recibo.fecha)} confianza={conf.fecha} />
+          <Campo label="Fecha del servicio" value={formatFecha(recibo.fecha)} confianza={conf.fecha} />
+          <Campo label="Fecha de procesamiento" value={formatFechaHora(recibo.created_at)} />
           <Campo label="Monto" value={formatMonto(recibo.monto, recibo.moneda)} confianza={conf.monto} />
           <Campo label="Cliente" value={recibo.cliente_original} confianza={conf.cliente} />
           <Campo label="Emisor" value={recibo.emisor_original} confianza={conf.emisor} />
