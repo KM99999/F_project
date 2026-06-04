@@ -17,6 +17,18 @@ function formatFecha(iso) {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
 
+// "27/04/2026" -> "2026-04-27"; "" if not a complete valid date (so the filter
+// only applies once the user finishes typing a full date).
+function parseToISO(text) {
+  if (!text) return "";
+  const m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(text.trim());
+  if (!m) return "";
+  const d = m[1].padStart(2, "0");
+  const mo = m[2].padStart(2, "0");
+  if (+mo < 1 || +mo > 12 || +d < 1 || +d > 31) return "";
+  return `${m[3]}-${mo}-${d}`;
+}
+
 function formatMonto(monto, moneda) {
   if (monto == null) return "—";
   const n = Number(monto);
@@ -27,15 +39,22 @@ function formatMonto(monto, moneda) {
 
 export default function ListaPage() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState({ estado: "", desde: "", hasta: "" });
+  const [estado, setEstado] = useState("");
+  const [desdeText, setDesdeText] = useState("");
+  const [hastaText, setHastaText] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
+  // Date filters are typed as DD/MM/AAAA but sent to the API as ISO.
+  const desde = parseToISO(desdeText);
+  const hasta = parseToISO(hastaText);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetchRecibos({ ...filters, page }).then((res) => {
+    fetchRecibos({ estado, desde, hasta, page }).then((res) => {
       if (active) {
         setData(res);
         setLoading(false);
@@ -44,14 +63,7 @@ export default function ListaPage() {
     return () => {
       active = false;
     };
-  }, [filters, page]);
-
-  const [exporting, setExporting] = useState(false);
-
-  function updateFilter(key, value) {
-    setPage(1);
-    setFilters((f) => ({ ...f, [key]: value }));
-  }
+  }, [estado, desde, hasta, page]);
 
   async function handleExport() {
     setExporting(true);
@@ -87,7 +99,13 @@ export default function ListaPage() {
       <div className="filters">
         <label>
           Estado
-          <select value={filters.estado} onChange={(e) => updateFilter("estado", e.target.value)}>
+          <select
+            value={estado}
+            onChange={(e) => {
+              setPage(1);
+              setEstado(e.target.value);
+            }}
+          >
             {ESTADOS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -97,11 +115,29 @@ export default function ListaPage() {
         </label>
         <label>
           Desde
-          <input type="date" value={filters.desde} onChange={(e) => updateFilter("desde", e.target.value)} />
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="DD/MM/AAAA"
+            value={desdeText}
+            onChange={(e) => {
+              setPage(1);
+              setDesdeText(e.target.value);
+            }}
+          />
         </label>
         <label>
           Hasta
-          <input type="date" value={filters.hasta} onChange={(e) => updateFilter("hasta", e.target.value)} />
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="DD/MM/AAAA"
+            value={hastaText}
+            onChange={(e) => {
+              setPage(1);
+              setHastaText(e.target.value);
+            }}
+          />
         </label>
       </div>
 
