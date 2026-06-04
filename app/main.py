@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.auth import router as auth_router
+from app.api.export import router as export_router
 from app.api.recibos import router as recibos_router
 from app.config import settings
 
@@ -26,6 +27,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(recibos_router)
+app.include_router(export_router)
 
 # Serve uploaded receipt images locally (replaced by an S3 bucket later).
 os.makedirs(settings.upload_dir, exist_ok=True)

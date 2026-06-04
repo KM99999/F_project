@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { fetchRecibos } from "../api/recibos.js";
+import { exportExcel, fetchRecibos } from "../api/recibos.js";
 import EstadoBadge from "../components/EstadoBadge.jsx";
 
 const ESTADOS = [
@@ -40,16 +40,42 @@ export default function ListaPage() {
     };
   }, [filters, page]);
 
+  const [exporting, setExporting] = useState(false);
+
   function updateFilter(key, value) {
     setPage(1);
     setFilters((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const blob = await exportExcel();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "recibos.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || "No se pudo exportar.");
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
     <section className="page">
       <div className="page-head">
         <h2>Recibos</h2>
-        <button onClick={() => navigate("/carga")}>+ Cargar recibo</button>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button className="btn-ghost" onClick={handleExport} disabled={exporting}>
+            {exporting ? "Exportando…" : "Exportar a Excel"}
+          </button>
+          <button onClick={() => navigate("/carga")}>+ Nueva verificación</button>
+        </div>
       </div>
 
       <div className="filters">

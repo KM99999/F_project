@@ -85,6 +85,13 @@ export function uploadVerificacion(reciboFile, carnetFile, onProgress) {
   });
 }
 
+// GET /export.xlsx — download the Excel report (auth header -> blob).
+export async function exportExcel() {
+  const res = await fetch(`${API_URL}/export.xlsx`, { headers: authHeaders() });
+  if (!res.ok) throw await asError(res);
+  return res.blob();
+}
+
 // POST /recibos/{id}/revision — approve/reject (implemented in Fase 3).
 export async function reviewRecibo(id, decision) {
   const res = await fetch(`${API_URL}/recibos/${id}/revision`, {

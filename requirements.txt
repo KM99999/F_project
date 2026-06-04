@@ -19,3 +19,5 @@ pdfplumber>=0.11
 pillow>=10.0
 # Detección visual (Fase 3 — hash perceptual / pHash)
 imagehash>=4.3
+# Exportación a Excel (Fase 4)
+openpyxl>=3.1
