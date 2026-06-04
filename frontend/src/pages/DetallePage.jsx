@@ -11,6 +11,12 @@ const TIPO_LABELS = {
   foto_manuscrito: "Foto (manuscrito)",
 };
 
+function formatFecha(iso) {
+  if (!iso) return "—";
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+}
+
 function formatMonto(monto, moneda) {
   if (monto == null) return "—";
   const n = Number(monto);
@@ -100,7 +106,7 @@ export default function DetallePage() {
         {/* Datos extraídos */}
         <div className="detalle-datos">
           <h3>Datos extraídos</h3>
-          <Campo label="Fecha" value={recibo.fecha} confianza={conf.fecha} />
+          <Campo label="Fecha" value={formatFecha(recibo.fecha)} confianza={conf.fecha} />
           <Campo label="Monto" value={formatMonto(recibo.monto, recibo.moneda)} confianza={conf.monto} />
           <Campo label="Cliente" value={recibo.cliente_original} confianza={conf.cliente} />
           <Campo label="Emisor" value={recibo.emisor_original} confianza={conf.emisor} />

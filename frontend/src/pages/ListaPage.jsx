@@ -11,6 +11,12 @@ const ESTADOS = [
   { value: "duplicado_confirmado", label: "Duplicado confirmado" },
 ];
 
+function formatFecha(iso) {
+  if (!iso) return "—";
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+}
+
 function formatMonto(monto, moneda) {
   if (monto == null) return "—";
   const n = Number(monto);
@@ -119,7 +125,7 @@ export default function ListaPage() {
           <tbody>
             {data.items.map((r) => (
               <tr key={r.id} onClick={() => navigate(`/recibos/${r.id}`)} className="row-link">
-                <td>{r.fecha}</td>
+                <td>{formatFecha(r.fecha)}</td>
                 <td>{r.cliente_original}</td>
                 <td>{r.emisor_original}</td>
                 <td className="right">{formatMonto(r.monto, r.moneda)}</td>
