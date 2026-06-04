@@ -307,6 +307,14 @@ button:disabled {
 .imagen-placeholder span {
   font-size: 2.5rem;
 }
+.doc-img {
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: block;
+}
 .detalle-datos h3 {
   margin-top: 0;
 }

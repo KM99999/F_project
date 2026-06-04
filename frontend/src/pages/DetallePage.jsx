@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import { mediaUrl } from "../api/client.js";
 import { fetchRecibo, reviewRecibo } from "../api/recibos.js";
 import EstadoBadge from "../components/EstadoBadge.jsx";
 
@@ -81,11 +82,19 @@ export default function DetallePage() {
       <div className="detalle-grid">
         {/* Imagen original (placeholder en Fase 1) */}
         <div className="detalle-imagen">
-          <div className="imagen-placeholder">
-            <span>📄</span>
-            <p className="muted">Imagen original del recibo</p>
-            <p className="muted small">{TIPO_LABELS[recibo.tipo_documento] ?? recibo.tipo_documento}</p>
-          </div>
+          {recibo.imagen_url ? (
+            <a href={mediaUrl(recibo.imagen_url)} target="_blank" rel="noreferrer">
+              <img className="doc-img" src={mediaUrl(recibo.imagen_url)} alt="Recibo" />
+            </a>
+          ) : (
+            <div className="imagen-placeholder">
+              <span>📄</span>
+              <p className="muted">Imagen original del recibo</p>
+            </div>
+          )}
+          <p className="muted small" style={{ marginTop: "0.5rem" }}>
+            {TIPO_LABELS[recibo.tipo_documento] ?? recibo.tipo_documento}
+          </p>
         </div>
 
         {/* Datos extraídos */}
@@ -107,6 +116,11 @@ export default function DetallePage() {
         <Campo label="Código" value={recibo.carnet_codigo} />
         <Campo label="Nombre" value={recibo.carnet_nombre} />
         <Campo label="Fecha de nacimiento" value={recibo.carnet_fecha_nac} />
+        {recibo.carnet_imagen_url && (
+          <a href={mediaUrl(recibo.carnet_imagen_url)} target="_blank" rel="noreferrer">
+            <img className="doc-img" src={mediaUrl(recibo.carnet_imagen_url)} alt="Carnet" style={{ marginTop: "0.75rem" }} />
+          </a>
+        )}
       </div>
 
       {/* Casos similares */}

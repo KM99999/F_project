@@ -4,6 +4,14 @@
 export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const TOKEN_KEY = "recibos_token";
 
+// Build a URL for an uploaded media file. /media is served at the site root
+// (not under /api), so strip a trailing "/api" from the API base.
+export function mediaUrl(path) {
+  if (!path) return null;
+  if (!path.startsWith("/")) return path;
+  return `${API_URL.replace(/\/api$/, "")}${path}`;
+}
+
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
