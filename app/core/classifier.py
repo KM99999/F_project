@@ -59,3 +59,22 @@ def resolve_image_media_type(content_type: str, filename: str) -> str:
     if lower.endswith(".gif"):
         return "image/gif"
     return "image/jpeg"
+
+
+def detect_image_media_type(data: bytes, content_type: str = "", filename: str = "") -> str:
+    """Detect the REAL image format from the file's magic bytes.
+
+    Filenames/extensions lie (e.g. a .jpeg that is actually a PNG), and Claude
+    rejects a mismatched media_type. Trust the bytes; fall back to the
+    extension/content-type only if the signature is unknown.
+    """
+    sig = data[:12]
+    if sig[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if sig[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if sig[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if sig[:4] == b"RIFF" and sig[8:12] == b"WEBP":
+        return "image/webp"
+    return resolve_image_media_type(content_type, filename)

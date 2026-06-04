@@ -28,7 +28,7 @@ def _extract(file_bytes: bytes, filename: str, content_type: str) -> ExtractionR
         logger.info("PDF sin texto seleccionable -> tratado como documento escaneado")
         return extractor.extract_from_pdf_document(file_bytes)
 
-    media_type = classifier.resolve_image_media_type(content_type, filename)
+    media_type = classifier.detect_image_media_type(file_bytes, content_type, filename)
     logger.info("Documento clasificado: imagen (%s)", media_type)
     return extractor.extract_from_image(file_bytes, media_type)
 
@@ -37,7 +37,7 @@ def _extract_carnet(file_bytes: bytes, filename: str, content_type: str):
     """Extract the client carnet (id/membership card)."""
     if classifier.is_pdf(content_type, filename):
         return extractor.extract_carnet_from_pdf_document(file_bytes)
-    media_type = classifier.resolve_image_media_type(content_type, filename)
+    media_type = classifier.detect_image_media_type(file_bytes, content_type, filename)
     return extractor.extract_carnet_from_image(file_bytes, media_type)
 
 
