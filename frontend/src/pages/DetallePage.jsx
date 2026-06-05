@@ -46,6 +46,47 @@ function Campo({ label, value, confianza }) {
   );
 }
 
+// Muestra el documento subido: PDF en visor embebido, imagen en <img>, y si la
+// imagen no se puede previsualizar (p. ej. HEIC viejo), un enlace de respaldo.
+function DocView({ url, label }) {
+  const [imgError, setImgError] = useState(false);
+  if (!url) {
+    return (
+      <div className="imagen-placeholder">
+        <span>📄</span>
+        <p className="muted">Sin {label.toLowerCase()}</p>
+      </div>
+    );
+  }
+  const full = mediaUrl(url);
+  const isPdf = /\.pdf(\?|$)/i.test(url);
+
+  if (isPdf) {
+    return (
+      <div>
+        <iframe src={full} title={label} className="doc-frame" />
+        <p className="small" style={{ marginTop: "0.5rem" }}>
+          <a href={full} target="_blank" rel="noreferrer">
+            Abrir {label} (PDF) en una pestaña
+          </a>
+        </p>
+      </div>
+    );
+  }
+  if (imgError) {
+    return (
+      <a href={full} target="_blank" rel="noreferrer">
+        Ver {label} (no se pudo previsualizar)
+      </a>
+    );
+  }
+  return (
+    <a href={full} target="_blank" rel="noreferrer">
+      <img className="doc-img" src={full} alt={label} onError={() => setImgError(true)} />
+    </a>
+  );
+}
+
 export default function DetallePage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -106,16 +147,7 @@ export default function DetallePage() {
       <div className="detalle-grid">
         {/* Imagen original (placeholder en Fase 1) */}
         <div className="detalle-imagen">
-          {recibo.imagen_url ? (
-            <a href={mediaUrl(recibo.imagen_url)} target="_blank" rel="noreferrer">
-              <img className="doc-img" src={mediaUrl(recibo.imagen_url)} alt="Recibo" />
-            </a>
-          ) : (
-            <div className="imagen-placeholder">
-              <span>📄</span>
-              <p className="muted">Imagen original del recibo</p>
-            </div>
-          )}
+          <DocView url={recibo.imagen_url} label="Recibo" />
           <p className="muted small" style={{ marginTop: "0.5rem" }}>
             {TIPO_LABELS[recibo.tipo_documento] ?? recibo.tipo_documento}
           </p>
@@ -141,11 +173,9 @@ export default function DetallePage() {
         <Campo label="Código" value={recibo.carnet_codigo} />
         <Campo label="Nombre" value={recibo.carnet_nombre} />
         <Campo label="Fecha de nacimiento" value={recibo.carnet_fecha_nac} />
-        {recibo.carnet_imagen_url && (
-          <a href={mediaUrl(recibo.carnet_imagen_url)} target="_blank" rel="noreferrer">
-            <img className="doc-img" src={mediaUrl(recibo.carnet_imagen_url)} alt="Carnet" style={{ marginTop: "0.75rem" }} />
-          </a>
-        )}
+        <div style={{ marginTop: "0.75rem" }}>
+          <DocView url={recibo.carnet_imagen_url} label="Carnet" />
+        </div>
       </div>
 
       {/* Casos similares */}
