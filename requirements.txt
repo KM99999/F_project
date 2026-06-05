@@ -21,3 +21,5 @@ pillow>=10.0
 imagehash>=4.3
 # Exportación a Excel (Fase 4)
 openpyxl>=3.1
+# Soporte de HEIC/HEIF (fotos de iPhone) para Pillow
+pillow-heif>=0.18

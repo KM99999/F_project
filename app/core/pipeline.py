@@ -1,10 +1,12 @@
-"""Pipeline orchestrator (§5.1): classify -> extract -> normalize -> persist.
+"""Pipeline orchestrator (§5.1): classify -> extract -> normalize -> detect -> persist.
 
-Fase 2 stops at persistence. Duplicate detection (hashes, score, estado) is
-added in Fase 3; for now every receipt is stored as `unico` with score 0.
+Images are re-encoded to a clean JPEG before extraction (handles iPhone HEIC,
+oversized photos and wrong extensions) and the converted copy is what we store,
+so it also displays in the browser. PDFs are sent/stored as-is.
 """
 
 import logging
+import os
 
 from sqlalchemy.orm import Session
 
@@ -12,33 +14,40 @@ from app.core import classifier, normalize, storage
 from app.db.models import Recibo
 from app.detection import engine, exact
 from app.detection import phash as phash_mod
-from app.schemas.recibo import ExtractionResult
 from app.vision import extractor
 
 logger = logging.getLogger("recibos.pipeline")
 
 
-def _extract(file_bytes: bytes, filename: str, content_type: str) -> ExtractionResult:
-    """Classify the document and run the appropriate extraction path."""
+def _jpg_name(filename: str) -> str:
+    base = os.path.splitext(filename or "imagen")[0]
+    return f"{base}.jpg"
+
+
+def _process_recibo(file_bytes: bytes, filename: str, content_type: str):
+    """Return (ExtractionResult, store_bytes, store_name, phash_source|None)."""
     if classifier.is_pdf(content_type, filename):
         text = classifier.extract_pdf_text(file_bytes)
         if classifier.has_structured_text(text):
-            logger.info("Documento clasificado: pdf_estructurado")
-            return extractor.extract_from_pdf_text(text)
-        logger.info("PDF sin texto seleccionable -> tratado como documento escaneado")
-        return extractor.extract_from_pdf_document(file_bytes)
+            logger.info("Recibo clasificado: pdf_estructurado")
+            result = extractor.extract_from_pdf_text(text)
+        else:
+            logger.info("PDF sin texto seleccionable -> documento escaneado")
+            result = extractor.extract_from_pdf_document(file_bytes)
+        return result, file_bytes, filename, None
 
-    media_type = classifier.detect_image_media_type(file_bytes, content_type, filename)
-    logger.info("Documento clasificado: imagen (%s)", media_type)
-    return extractor.extract_from_image(file_bytes, media_type)
+    img_bytes, media_type = classifier.normalize_for_claude(file_bytes)
+    logger.info("Recibo clasificado: imagen (%s)", media_type)
+    result = extractor.extract_from_image(img_bytes, media_type)
+    return result, img_bytes, _jpg_name(filename), img_bytes
 
 
-def _extract_carnet(file_bytes: bytes, filename: str, content_type: str):
-    """Extract the client carnet (id/membership card)."""
+def _process_carnet(file_bytes: bytes, filename: str, content_type: str):
+    """Return (CarnetExtraction, store_bytes, store_name)."""
     if classifier.is_pdf(content_type, filename):
-        return extractor.extract_carnet_from_pdf_document(file_bytes)
-    media_type = classifier.detect_image_media_type(file_bytes, content_type, filename)
-    return extractor.extract_carnet_from_image(file_bytes, media_type)
+        return extractor.extract_carnet_from_pdf_document(file_bytes), file_bytes, filename
+    img_bytes, media_type = classifier.normalize_for_claude(file_bytes)
+    return extractor.extract_carnet_from_image(img_bytes, media_type), img_bytes, _jpg_name(filename)
 
 
 def process_verificacion(
@@ -51,14 +60,12 @@ def process_verificacion(
     carnet_ct: str,
 ) -> Recibo:
     """Process a verification: receipt + client carnet -> one persisted record."""
-    imagen_url = storage.save_upload(recibo_bytes, recibo_name)
-    extracted = _extract(recibo_bytes, recibo_name, recibo_ct)
+    extracted, rb_store, rb_name, phash_src = _process_recibo(recibo_bytes, recibo_name, recibo_ct)
+    imagen_url = storage.save_upload(rb_store, rb_name)
 
     # Carnet (obligatorio): estructurado y claro -> extracción directa.
-    carnet_url = storage.save_upload(carnet_bytes, carnet_name)
-    carnet = _extract_carnet(carnet_bytes, carnet_name, carnet_ct)
-
-    file_bytes, filename, content_type = recibo_bytes, recibo_name, recibo_ct
+    carnet, cb_store, cb_name = _process_carnet(carnet_bytes, carnet_name, carnet_ct)
+    carnet_url = storage.save_upload(cb_store, cb_name)
 
     confianza = (
         extracted.confianza_por_campo.model_dump(exclude_none=True)
@@ -87,9 +94,7 @@ def process_verificacion(
 
     # --- Detección de duplicados (Fase 3) ---
     # pHash solo para imágenes; los PDFs estructurados se apoyan en el match exacto.
-    phash = None
-    if not classifier.is_pdf(content_type, filename):
-        phash = phash_mod.compute_phash(file_bytes)
+    phash = phash_mod.compute_phash(phash_src) if phash_src is not None else None
     recibo.phash = phash
     clave = exact.build_clave(recibo.emisor, recibo.fecha, recibo.monto, recibo.cliente)
     recibo.clave_compuesta_hash = exact.clave_hash(clave)
