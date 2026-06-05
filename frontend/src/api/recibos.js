@@ -23,11 +23,19 @@ async function asError(res) {
 }
 
 // GET /recibos — paginated list with filters.
-export async function fetchRecibos({ estado = "", desde = "", hasta = "", page = 1, pageSize = 10 } = {}) {
+export async function fetchRecibos({
+  estado = "",
+  desde = "",
+  hasta = "",
+  campoFecha = "servicio",
+  page = 1,
+  pageSize = 10,
+} = {}) {
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
   if (estado) params.set("estado", estado);
   if (desde) params.set("desde", desde);
   if (hasta) params.set("hasta", hasta);
+  if (campoFecha) params.set("campo_fecha", campoFecha);
 
   const res = await fetch(`${API_URL}/recibos?${params.toString()}`, { headers: authHeaders() });
   if (!res.ok) throw await asError(res);

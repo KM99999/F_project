@@ -6,9 +6,10 @@ similares) exist but are only meaningfully populated in Fase 3.
 
 import logging
 import math
+from datetime import date as date_cls
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import Date, cast, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -22,7 +23,7 @@ logger = logging.getLogger("recibos.api")
 
 router = APIRouter(prefix="/recibos", tags=["recibos"])
 
-_MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
+_MAX_UPLOAD_BYTES = 25 * 1024 * 1024  # 25 MB por archivo (fotos de celular grandes)
 _ALLOWED = {"application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
 
 
@@ -67,19 +68,29 @@ def listar_recibos(
     estado: str | None = Query(default=None),
     desde: str | None = Query(default=None),
     hasta: str | None = Query(default=None),
+    campo_fecha: str = Query(default="servicio"),  # "servicio" | "procesamiento"
     page: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
     db: Session = Depends(get_db),
     _: Usuario = Depends(get_current_user),
 ) -> ReciboListOut:
-    """Paginated list with filters by estado and date range (§5.6)."""
+    """Paginated list. Filters by estado and a date range over the chosen date
+    field: servicio (Recibo.fecha) or procesamiento (Recibo.created_at) (§5.6)."""
     conditions = []
     if estado:
         conditions.append(Recibo.estado == estado)
-    if desde:
-        conditions.append(Recibo.fecha >= desde)
-    if hasta:
-        conditions.append(Recibo.fecha <= hasta)
+
+    if campo_fecha == "procesamiento":
+        col = cast(Recibo.created_at, Date)
+        if desde:
+            conditions.append(col >= date_cls.fromisoformat(desde))
+        if hasta:
+            conditions.append(col <= date_cls.fromisoformat(hasta))
+    else:
+        if desde:
+            conditions.append(Recibo.fecha >= desde)
+        if hasta:
+            conditions.append(Recibo.fecha <= hasta)
 
     base = select(Recibo)
     for cond in conditions:

@@ -235,6 +235,12 @@ button:disabled {
   border-radius: 6px;
   font-size: 0.9rem;
 }
+.filters .react-datepicker-wrapper {
+  display: block;
+}
+.datepicker-input {
+  width: 140px;
+}
 
 /* --- Table --- */
 .table {

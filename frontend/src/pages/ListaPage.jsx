@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 import { exportExcel, fetchRecibos } from "../api/recibos.js";
 import EstadoBadge from "../components/EstadoBadge.jsx";
@@ -11,22 +13,17 @@ const ESTADOS = [
   { value: "duplicado_confirmado", label: "Duplicado confirmado" },
 ];
 
+// Date object -> "YYYY-MM-DD" (local), for the API.
+function toISO(d) {
+  if (!d) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 function formatFecha(iso) {
   if (!iso) return "—";
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
-}
-
-// "27/04/2026" -> "2026-04-27"; "" if not a complete valid date (so the filter
-// only applies once the user finishes typing a full date).
-function parseToISO(text) {
-  if (!text) return "";
-  const m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(text.trim());
-  if (!m) return "";
-  const d = m[1].padStart(2, "0");
-  const mo = m[2].padStart(2, "0");
-  if (+mo < 1 || +mo > 12 || +d < 1 || +d > 31) return "";
-  return `${m[3]}-${mo}-${d}`;
 }
 
 // created_at is an ISO datetime; show only the date as DD/MM/AAAA (local).
@@ -49,21 +46,21 @@ function formatMonto(monto, moneda) {
 export default function ListaPage() {
   const navigate = useNavigate();
   const [estado, setEstado] = useState("");
-  const [desdeText, setDesdeText] = useState("");
-  const [hastaText, setHastaText] = useState("");
+  const [desdeDate, setDesdeDate] = useState(null);
+  const [hastaDate, setHastaDate] = useState(null);
+  const [campoFecha, setCampoFecha] = useState("servicio"); // servicio | procesamiento
   const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
-  // Date filters are typed as DD/MM/AAAA but sent to the API as ISO.
-  const desde = parseToISO(desdeText);
-  const hasta = parseToISO(hastaText);
+  const desde = toISO(desdeDate);
+  const hasta = toISO(hastaDate);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetchRecibos({ estado, desde, hasta, page }).then((res) => {
+    fetchRecibos({ estado, desde, hasta, campoFecha, page }).then((res) => {
       if (active) {
         setData(res);
         setLoading(false);
@@ -72,7 +69,7 @@ export default function ListaPage() {
     return () => {
       active = false;
     };
-  }, [estado, desde, hasta, page]);
+  }, [estado, desde, hasta, campoFecha, page]);
 
   async function handleExport() {
     setExporting(true);
@@ -123,29 +120,45 @@ export default function ListaPage() {
           </select>
         </label>
         <label>
-          Desde
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="DD/MM/AAAA"
-            value={desdeText}
+          Buscar por
+          <select
+            value={campoFecha}
             onChange={(e) => {
               setPage(1);
-              setDesdeText(e.target.value);
+              setCampoFecha(e.target.value);
             }}
+          >
+            <option value="servicio">Fecha del servicio</option>
+            <option value="procesamiento">Fecha de procesamiento</option>
+          </select>
+        </label>
+        <label>
+          Desde
+          <DatePicker
+            selected={desdeDate}
+            onChange={(d) => {
+              setPage(1);
+              setDesdeDate(d);
+            }}
+            dateFormat="dd/MM/yyyy"
+            placeholderText="DD/MM/AAAA"
+            isClearable
+            className="datepicker-input"
           />
         </label>
         <label>
           Hasta
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="DD/MM/AAAA"
-            value={hastaText}
-            onChange={(e) => {
+          <DatePicker
+            selected={hastaDate}
+            onChange={(d) => {
               setPage(1);
-              setHastaText(e.target.value);
+              setHastaDate(d);
             }}
+            dateFormat="dd/MM/yyyy"
+            placeholderText="DD/MM/AAAA"
+            isClearable
+            minDate={desdeDate ?? undefined}
+            className="datepicker-input"
           />
         </label>
       </div>
@@ -161,6 +174,7 @@ export default function ListaPage() {
               <th>Fecha servicio</th>
               <th>Fecha proceso</th>
               <th>Cliente</th>
+              <th>Código</th>
               <th>Emisor</th>
               <th className="right">Monto</th>
               <th>Concepto</th>
@@ -174,6 +188,7 @@ export default function ListaPage() {
                 <td>{formatFecha(r.fecha)}</td>
                 <td>{formatFechaProceso(r.created_at)}</td>
                 <td>{r.cliente_original}</td>
+                <td>{r.carnet_codigo ?? "—"}</td>
                 <td>{r.emisor_original}</td>
                 <td className="right">{formatMonto(r.monto, r.moneda)}</td>
                 <td>{r.concepto}</td>
