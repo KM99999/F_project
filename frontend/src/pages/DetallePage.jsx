@@ -95,6 +95,14 @@ export default function DetallePage() {
       <h2>Recibo #{recibo.id}</h2>
       <p className="muted small">Procesado en el sistema: {formatFechaHora(recibo.created_at)}</p>
 
+      {recibo.alerta_nombre && (
+        <div className="alerta-nombre">
+          🚩 <strong>Atención:</strong> el nombre del recibo (<em>{recibo.cliente_original || "—"}</em>) no
+          coincide con el del carnet (<em>{recibo.carnet_nombre || "—"}</em>). Verificá manualmente — puede
+          ser un error de escritura o un carnet equivocado.
+        </div>
+      )}
+
       <div className="detalle-grid">
         {/* Imagen original (placeholder en Fase 1) */}
         <div className="detalle-imagen">

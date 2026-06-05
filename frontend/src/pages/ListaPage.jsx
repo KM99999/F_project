@@ -187,7 +187,14 @@ export default function ListaPage() {
               <tr key={r.id} onClick={() => navigate(`/recibos/${r.id}`)} className="row-link">
                 <td>{formatFecha(r.fecha)}</td>
                 <td>{formatFechaProceso(r.created_at)}</td>
-                <td>{r.cliente_original}</td>
+                <td>
+                  {r.cliente_original}
+                  {r.alerta_nombre && (
+                    <span className="flag" title="El nombre del recibo no coincide con el del carnet">
+                      🚩
+                    </span>
+                  )}
+                </td>
                 <td>{r.carnet_codigo ?? "—"}</td>
                 <td>{r.emisor_original}</td>
                 <td className="right">{formatMonto(r.monto, r.moneda)}</td>

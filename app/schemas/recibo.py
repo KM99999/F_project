@@ -67,6 +67,8 @@ class ReciboOut(BaseModel):
     carnet_codigo: Optional[str] = None
     carnet_nombre: Optional[str] = None
     carnet_fecha_nac: Optional[str] = None
+    # Red flag: el nombre del recibo no coincide con el del carnet (revisión humana).
+    alerta_nombre: bool = False
     created_at: datetime
 
 

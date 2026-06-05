@@ -70,3 +70,11 @@ class Recibo(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+    @property
+    def alerta_nombre(self) -> bool:
+        """Red flag: the receipt name and the carnet name clearly differ
+        (→ human review). Computed, not stored. Tolerant to typos/order."""
+        from app.core.names import names_mismatch
+
+        return names_mismatch(self.cliente_original, self.carnet_nombre)
