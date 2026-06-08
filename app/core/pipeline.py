@@ -27,13 +27,13 @@ def _jpg_name(filename: str) -> str:
 def _process_recibo(file_bytes: bytes, filename: str, content_type: str):
     """Return (ExtractionResult, store_bytes, store_name, phash_source|None)."""
     if classifier.is_pdf(content_type, filename):
-        text = classifier.extract_pdf_text(file_bytes)
-        if classifier.has_structured_text(text):
-            logger.info("Recibo clasificado: pdf_estructurado")
-            result = extractor.extract_from_pdf_text(text)
-        else:
-            logger.info("PDF sin texto seleccionable -> documento escaneado")
-            result = extractor.extract_from_pdf_document(file_bytes)
+        # Siempre por visión sobre el PDF: lee el texto digital Y el contenido
+        # escaneado/manuscrito. Un PDF "con texto" (membrete impreso) puede tener
+        # los datos clave (monto, cliente) escritos a mano sobre el formulario, y
+        # esos no están en la capa de texto.
+        logger.info("Recibo PDF -> extracción por documento (visión: texto + manuscrito)")
+        result = extractor.extract_from_pdf_document(file_bytes)
+        result.tipo_documento = "pdf_estructurado"
         return result, file_bytes, filename, None
 
     img_bytes, media_type = classifier.normalize_for_claude(file_bytes)
