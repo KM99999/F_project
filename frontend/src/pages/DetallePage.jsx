@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { mediaUrl } from "../api/client.js";
-import { fetchRecibo, reviewRecibo } from "../api/recibos.js";
+import { fetchRecibo, reprocesarRecibo, reviewRecibo } from "../api/recibos.js";
 import EstadoBadge from "../components/EstadoBadge.jsx";
 
 const TIPO_LABELS = {
@@ -94,6 +94,7 @@ export default function DetallePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [reprocesando, setReprocesando] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -118,6 +119,19 @@ export default function DetallePage() {
     }
   }
 
+  async function handleReprocesar() {
+    setReprocesando(true);
+    try {
+      await reprocesarRecibo(id);
+      const fresh = await fetchRecibo(id); // trae también casos similares actualizados
+      setRecibo(fresh);
+    } catch (e) {
+      alert(e.message || "No se pudo reprocesar el recibo.");
+    } finally {
+      setReprocesando(false);
+    }
+  }
+
   if (loading) return <p className="muted">Cargando…</p>;
   if (error) return <p className="error">{error}</p>;
 
@@ -130,7 +144,12 @@ export default function DetallePage() {
         <Link to="/recibos" className="back-link">
           ← Volver a la lista
         </Link>
-        <EstadoBadge estado={recibo.estado} />
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+          <button className="btn-ghost" onClick={handleReprocesar} disabled={reprocesando}>
+            {reprocesando ? "Reprocesando…" : "🔄 Reprocesar"}
+          </button>
+          <EstadoBadge estado={recibo.estado} />
+        </div>
       </div>
 
       <h2>Recibo #{recibo.id}</h2>

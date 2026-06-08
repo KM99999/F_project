@@ -145,3 +145,24 @@ def revisar_recibo(
     db.commit()
     db.refresh(recibo)
     return recibo
+
+
+@router.post("/{recibo_id}/reprocesar", response_model=ReciboOut)
+def reprocesar_recibo(
+    recibo_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+) -> Recibo:
+    """Re-ejecuta extracción + detección sobre los archivos ya guardados (sin re-subir)."""
+    recibo = db.get(Recibo, recibo_id)
+    if recibo is None:
+        raise HTTPException(status_code=404, detail="Recibo no encontrado.")
+    try:
+        return pipeline.reprocess(db, recibo)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except FileNotFoundError:
+        raise HTTPException(status_code=409, detail="No se encontró el archivo original para reprocesar.")
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Fallo al reprocesar")
+        raise HTTPException(status_code=502, detail=f"No se pudo reprocesar: {exc}")

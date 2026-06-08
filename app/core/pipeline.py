@@ -10,6 +10,7 @@ import os
 
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.core import classifier, normalize, storage
 from app.db.models import Recibo
 from app.detection import engine, exact
@@ -17,6 +18,25 @@ from app.detection import phash as phash_mod
 from app.vision import extractor
 
 logger = logging.getLogger("recibos.pipeline")
+
+
+def _apply_extraction(recibo: Recibo, extracted) -> None:
+    """Copy extracted + normalized fields onto a Recibo (used by upload & reprocess)."""
+    recibo.tipo_documento = extracted.tipo_documento or recibo.tipo_documento or "foto_impreso"
+    recibo.fecha = normalize.normalize_date(extracted.fecha)
+    recibo.monto = normalize.normalize_amount(extracted.monto)
+    recibo.moneda = normalize.normalize_currency(extracted.moneda)
+    recibo.cliente = normalize.normalize_text(extracted.cliente)
+    recibo.cliente_original = extracted.cliente
+    recibo.emisor = normalize.normalize_text(extracted.emisor)
+    recibo.emisor_original = extracted.emisor
+    recibo.concepto = normalize.normalize_text(extracted.concepto)
+    recibo.forma_pago = extracted.forma_pago
+    recibo.confianza_por_campo = (
+        extracted.confianza_por_campo.model_dump(exclude_none=True)
+        if extracted.confianza_por_campo
+        else None
+    )
 
 
 def _jpg_name(filename: str) -> str:
@@ -110,4 +130,52 @@ def process_verificacion(
         "Recibo %s procesado (tipo=%s, estado=%s, score=%s)",
         recibo.id, recibo.tipo_documento, recibo.estado, recibo.score,
     )
+    return recibo
+
+
+def _read_stored(url: str) -> bytes:
+    path = os.path.join(settings.upload_dir, os.path.basename(url))
+    with open(path, "rb") as f:
+        return f.read()
+
+
+def reprocess(db: Session, recibo: Recibo) -> Recibo:
+    """Re-run extraction + detection on an already-uploaded verification, using
+    the stored files (no re-upload). Updates the record in place."""
+    rb = _read_stored(recibo.imagen_url)
+    is_pdf_recibo = (recibo.imagen_url or "").lower().endswith(".pdf")
+    if is_pdf_recibo:
+        extracted = extractor.extract_from_pdf_document(rb)
+        extracted.tipo_documento = "pdf_estructurado"
+        phash = None
+    else:
+        img, media_type = classifier.normalize_for_claude(rb)
+        extracted = extractor.extract_from_image(img, media_type)
+        phash = phash_mod.compute_phash(img)
+
+    _apply_extraction(recibo, extracted)
+
+    # Carnet (si lo tiene)
+    if recibo.carnet_imagen_url:
+        cb = _read_stored(recibo.carnet_imagen_url)
+        if recibo.carnet_imagen_url.lower().endswith(".pdf"):
+            carnet = extractor.extract_carnet_from_pdf_document(cb)
+        else:
+            cimg, cmt = classifier.normalize_for_claude(cb)
+            carnet = extractor.extract_carnet_from_image(cimg, cmt)
+        recibo.carnet_codigo = (carnet.codigo or "").strip() or None
+        recibo.carnet_nombre = carnet.nombre
+        recibo.carnet_fecha_nac = carnet.fecha_nacimiento
+
+    # Re-detección (excluyendo este mismo recibo para que no se matchee a sí mismo)
+    recibo.phash = phash
+    clave = exact.build_clave(recibo.emisor, recibo.fecha, recibo.monto, recibo.cliente)
+    recibo.clave_compuesta_hash = exact.clave_hash(clave)
+    estado, score = engine.evaluate(db, recibo, phash, exclude_id=recibo.id)
+    recibo.estado = estado
+    recibo.score = score
+
+    db.commit()
+    db.refresh(recibo)
+    logger.info("Recibo %s reprocesado (estado=%s, score=%s)", recibo.id, recibo.estado, recibo.score)
     return recibo

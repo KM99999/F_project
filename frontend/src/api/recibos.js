@@ -100,6 +100,16 @@ export async function exportExcel() {
   return res.blob();
 }
 
+// POST /recibos/{id}/reprocesar — re-extract + re-detect from stored files.
+export async function reprocesarRecibo(id) {
+  const res = await fetch(`${API_URL}/recibos/${id}/reprocesar`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw await asError(res);
+  return res.json();
+}
+
 // POST /recibos/{id}/revision — approve/reject (implemented in Fase 3).
 export async function reviewRecibo(id, decision) {
   const res = await fetch(`${API_URL}/recibos/${id}/revision`, {

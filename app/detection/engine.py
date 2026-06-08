@@ -81,9 +81,13 @@ def _motivo(fields: int, dist: Optional[int], exact: bool) -> str:
     return "Coincidencia parcial de campos."
 
 
-def evaluate(db, recibo: Recibo, phash: Optional[str]) -> tuple[str, int]:
-    """Score a NOT-yet-persisted receipt against existing ones (upload time)."""
-    candidates = db.execute(select(Recibo)).scalars().all()
+def evaluate(db, recibo: Recibo, phash: Optional[str], exclude_id: int | None = None) -> tuple[str, int]:
+    """Score a receipt against existing ones. On reprocess the receipt is already
+    persisted, so pass exclude_id to avoid it matching itself."""
+    query = select(Recibo)
+    if exclude_id is not None:
+        query = query.where(Recibo.id != exclude_id)
+    candidates = db.execute(query).scalars().all()
 
     # Exact composite-key match short-circuits to a confirmed duplicate.
     if recibo.clave_compuesta_hash:
