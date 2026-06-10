@@ -41,6 +41,9 @@ def fix_for_fpdf(html: str) -> str:
     """fpdf2 no admite etiquetas anidadas dentro de celdas ni dentro de <pre>.
     Quita <code> en todo el documento y aplana el contenido de td/th."""
     html = html.replace("<code>", "").replace("</code>", "")
+    for tag in ("<thead>", "</thead>", "<tbody>", "</tbody>"):
+        html = html.replace(tag, "")
+    html = html.replace("<table>", '<table border="1">')
 
     def strip_inner(m):
         return m.group(1) + re.sub(r"<[^>]+>", "", m.group(2)) + m.group(3)
