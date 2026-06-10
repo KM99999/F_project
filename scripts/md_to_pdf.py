@@ -40,7 +40,7 @@ def clean(text: str) -> str:
 def fix_for_fpdf(html: str) -> str:
     """fpdf2 no admite etiquetas anidadas dentro de celdas ni dentro de <pre>.
     Quita <code> en todo el documento y aplana el contenido de td/th."""
-    html = html.replace("<code>", "").replace("</code>", "")
+    html = re.sub(r"</?code[^>]*>", "", html)
     for tag in ("<thead>", "</thead>", "<tbody>", "</tbody>"):
         html = html.replace(tag, "")
     html = html.replace("<table>", '<table border="1">')
