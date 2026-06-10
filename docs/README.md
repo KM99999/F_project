@@ -38,6 +38,11 @@ el cliente no puede validar.
 | [4 — Exportación y cierre M1](fases/fase-4-exportacion-y-cierre-m1.md) | Export Excel + sistema en producción | M1 |
 | [5 — Milestone 2](fases/fase-5-milestone-2.md) | Calibración, capa visual, automatización | M2 |
 
+## Entrega al cliente
+
+- [Documento de entrega — Milestone 1](ENTREGA-M1.md) — inventario de activos, propiedad/control, traspaso, operación
+- [Manual de operación](MANUAL-OPERACION.md) — cómo usar el sistema (acceso, carga, lista, detalle, export)
+
 ## Despliegue
 
 - [Despliegue en VPS — Fase 0](deploy/vps-fase-0.md) — runbook (Docker, dominio, HTTPS)
