@@ -9,6 +9,8 @@ Python, sin dependencias del sistema). Es una utilidad de documentación; no for
 parte de la app en ejecución.
 """
 
+import re
+
 import markdown
 from fpdf import FPDF
 
@@ -35,10 +37,22 @@ def clean(text: str) -> str:
     return text.encode("latin-1", "ignore").decode("latin-1")
 
 
+def fix_for_fpdf(html: str) -> str:
+    """fpdf2 no admite etiquetas anidadas dentro de celdas ni dentro de <pre>.
+    Quita <code> en todo el documento y aplana el contenido de td/th."""
+    html = html.replace("<code>", "").replace("</code>", "")
+
+    def strip_inner(m):
+        return m.group(1) + re.sub(r"<[^>]+>", "", m.group(2)) + m.group(3)
+
+    return re.sub(r"(<(?:td|th)[^>]*>)(.*?)(</(?:td|th)>)", strip_inner, html, flags=re.S)
+
+
 def main() -> None:
     for src, out in DOCS:
         with open(src, encoding="utf-8") as f:
             html = markdown.markdown(clean(f.read()), extensions=["tables", "fenced_code"])
+        html = fix_for_fpdf(html)
         pdf = FPDF()
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
