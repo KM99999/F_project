@@ -1,13 +1,8 @@
 # Documentación — Sistema de Verificación de Recibos de Pago
 
-Esta carpeta es la **descomposición navegable** del documento de contexto
-[`contexto_proyecto_recibos.md`](../contexto_proyecto_recibos.md), reorganizada
-para facilitar el desarrollo paso a paso.
-
-El archivo original sigue siendo la **fuente canónica** (integración con Claude /
-CLAUDE.md). Estos documentos no lo reemplazan: lo ordenan en secuencia de
-construcción y separan el *qué construir* (referencia) del *en qué orden y cómo*
-(fases).
+Esta carpeta contiene la **documentación funcional y el plan de desarrollo** del
+proyecto, organizada para facilitar el desarrollo paso a paso: separa el *qué
+construir* (referencia) del *en qué orden y cómo* (fases).
 
 ## Cómo leer esta documentación
 
